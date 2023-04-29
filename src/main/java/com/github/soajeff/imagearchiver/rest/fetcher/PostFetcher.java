@@ -30,6 +30,9 @@ import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
 import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 public class PostFetcher extends RestFetcher {
 
@@ -41,6 +44,7 @@ public class PostFetcher extends RestFetcher {
 	private final String domain;
 
 	private final ExecutorService executorService = Executors.newFixedThreadPool(4);
+	private final OkHttpClient client = new OkHttpClient();
 
 	public PostFetcher(String baseUrl, String apiKey, List<Integer> topicIds, File baseDir) {
 		super(baseUrl, apiKey);
@@ -108,27 +112,46 @@ public class PostFetcher extends RestFetcher {
 						int dupcount = 0;
 						while (imageFile.exists()) {
 							dupcount++;
-							imageFile = new File(pid, dupcount + filename);
+							imageFile = new File(pid, dupcount + "-" + filename);
 							logger.debug("[Pid " + p.getId() + "] Dup filename, now named " + imageFile.getName());
 						}
 						File swapFile = new File(pid, p.getId() + "-swap.txt");
-						try (InputStream is = FileDownloader.downloadFile(image.attr("src"));
-								ByteArrayInputStream bais = new ByteArrayInputStream(IOUtils.toByteArray(is));
-								FileOutputStream fos = new FileOutputStream(imageFile)) {
-							IOUtils.copy(bais, fos);
-							logger.trace("[Pid " + p.getId() + "] Image " + imageFile.getName() + " downloaded.");
 
-							try (FileWriter fw = new FileWriter(swapFile, true);
-									BufferedWriter bw = new BufferedWriter(fw)) {
-								bw.write(image.attr("src") + "," + this.baseDir.toURI().relativize(imageFile.toURI())
-										+ "\n");
+						Request request = new Request.Builder().url(image.attr("src")).build();
+						try (Response response = client.newCall(request).execute()) {
+							if (response.isSuccessful()) {
+								assert response.body() != null;
+								if (response.body().contentLength() == 0) {
+									logger.error("[Pid " + p.getId() + "] URL led to a 0 length item: " + image.attr("src"));
+								} else if (!response.body().contentType().toString().startsWith("image/")) {
+									logger.error("[Pid " + p.getId() + "] URL led to item that was not an image: " + image.attr("src") + " (instead was " + response.body().contentType() + ")");
+								} else {
+									try (ByteArrayInputStream bais = new ByteArrayInputStream(
+											IOUtils.toByteArray(response.body().byteStream()));
+											FileOutputStream fos = new FileOutputStream(imageFile)) {
+										IOUtils.copy(bais, fos);
+										logger.trace("[Pid " + p.getId() + "] Image " + imageFile.getName()
+												+ " downloaded.");
 
-							} catch (IOException e) {
-								logger.error("Failed to record image URL in swap file", e);
+										try (FileWriter fw = new FileWriter(swapFile, true);
+												BufferedWriter bw = new BufferedWriter(fw)) {
+											bw.write(image.attr("src") + "," + this.baseDir.toURI()
+													.relativize(imageFile.toURI()) + "\n");
+
+										} catch (IOException e) {
+											logger.error("[Pid " + p.getId() + "] Failed to record image URL in swap file", e);
+										}
+
+									} catch (Exception e) {
+										logger.error("[Pid " + p.getId() + "] Failed to download image", e);
+									}
+								}
+							} else {
+								logger.error("[Pid " + p.getId() + "] URL download was unsuccessful: " + image.attr("src"));
 							}
 
 						} catch (Exception e) {
-							logger.error("Failed to download image", e);
+							logger.error("[Pid " + p.getId() + "] Failed to download image: " + e.getMessage());
 						}
 
 					}
@@ -141,7 +164,7 @@ public class PostFetcher extends RestFetcher {
 							BufferedWriter bw = new BufferedWriter(fw)) {
 						bw.write(p.getContent().trim());
 					} catch (IOException e) {
-						logger.error("Failed to record content in content file", e);
+						logger.error("Failed to record content in content file: ", e);
 					}
 				}
 			}

@@ -45,7 +45,6 @@ public class ImageArchiver {
 			} else if (args[i].equals("-directory")) {
 				i++;
 				this.directory = new File(args[i]);
-				System.out.println(this.directory.getAbsolutePath());
 			} else if (args[i].equals("-manual")) {
 				i++;
 				this.manualIds.add(Integer.parseInt(args[i]));

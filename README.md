@@ -21,10 +21,10 @@ The archiver requires the following arguments:
 
 ## Swapper
 
-The swapper (to be written) will take this data, forum a URL based on where the images are now hosted, swaps the image location into the content string, and then submits via the REST API the updated content.  It is expected that prior to running, the user has determined the location where the images will be hosted and has placed the images in this location.
+The swapper (to be written) will take this data, form a URL based on where the images are now hosted, swaps the image location into the content string, and then submits via the REST API the updated content.  It is expected that prior to running, the user has determined the location where the images will be hosted and has placed the images in this location.
 
 The swapper requires the following REST endpoints:
-* TBD
+* **POST /forums/posts/{id}** (user provides the updated content string to edit the post with)
 
 The swapper requires the following arguments:
 * TBD
