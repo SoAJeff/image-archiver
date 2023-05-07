@@ -27,4 +27,7 @@ The swapper requires the following REST endpoints:
 * **POST /forums/posts/{id}** (user provides the updated content string to edit the post with)
 
 The swapper requires the following arguments:
-* TBD
+* baseurl - The base URL for the REST API (e.g., https://forums.soa-rs.com/api)
+* apikey - The API key generated within the ACP to access the appropriate REST endpoints
+* directory - Path to the local base directory where the images and content should be saved.
+* imagehosturl - Beginning of the URL to where images have been stored on the remote server.  The path to images stored in the CSV swap file will be appended onto this base path.
